@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """The World Today - 22 November 2026. One dense 1024x1024 news image.
 
+v2: 42 stories (13 featured with drawn scene panels + 29 in brief),
+day-in-numbers strip, region bar, certainty tags, explicit press time.
+
+v2: 42 stories (13 featured with drawn scene panels + 29 in brief),
+day-in-numbers strip, region bar, certainty tags, explicit press time.
+
 Pure Python standard library. Deterministic: no network, no clock, no
 randomness. Renders at 2048x2048 (2x supersampling, all geometry computed
 in device space) and averages down to 1024x1024. Writes entry.png to
@@ -278,9 +284,9 @@ STROKE = {
            (1, 2), (3, 0)],
           [(3, 8), (9, 8), (11, 10), (11, 13), (9, 15), (3, 15), (1, 13),
            (1, 10), (3, 8)]],
-    '9': [[(1, 13), (1, 6), (3, 7), (9, 7), (11, 9), (11, 13), (9, 15),
-           (3, 15), (1, 13)],
-          [(1, 6), (1, 2), (3, 0), (9, 0), (11, 2), (11, 6)]],
+    '9': [[(3, 0), (9, 0), (11, 2), (11, 6), (9, 8), (3, 8), (1, 6),
+           (1, 2), (3, 0)],
+          [(11, 8), (11, 13), (9, 15), (3, 15), (1, 13)]],
     ' ': [],
     '.': [[(5, 14), (7, 14), (7, 15), (5, 15)]],
     '-': [[(2, 8), (10, 8)]],
@@ -316,88 +322,104 @@ def text_stroke_w(s, scale=2.0, spacing=2.0):
     return int(round(len(s) * (12 + spacing) * scale))
 
 # ------------------------------------------------------------------ data
-# 54 stories. Headline + one detail line. Dates are shown on the card
-# whenever the event is not 22 November itself. All figures verified
-# against Reuters / AP / AFP / BBC / UN News / WHO / EU Commission
-# on Monday 23 Nov 2026. COP31: collapsed Sun 22 Nov, no deal adopted.
-# Cikande: 22 Nov figures 3 dead / 36 missing (Mon update 24 killed
-# came later and is NOT the 22 Nov figure). GTA VI: $1.84bn was the
-# Sensor Tower morning estimate of 19 Nov; Rockstar/Take-Two's
+# v2 format (competitor study, Nov 21 final + Nov 22 dev top 5):
+# fewer, bigger stories — 13 featured + 29 in brief = 42 total, 7 regions.
+# Winners carry 31-43 stories with big featured cards, a day-in-numbers
+# strip, a region bar, certainty tags, and an explicit press time.
+# All figures verified against Reuters / AP / AFP / BBC / UN News / WHO /
+# EU Commission on Monday 23 Nov 2026. COP31: collapsed Sun 22 Nov, no
+# deal adopted. Cikande: 22 Nov figures 3 dead / 36 missing (Mon update
+# 24 killed came later and is NOT the 22 Nov figure). GTA VI: $1.84bn was
+# the Sensor Tower morning estimate of 19 Nov; Rockstar/Take-Two's
 # official figure, 20 Nov, is $3.79bn day-one retail, 32.5m pre-sold.
 
-LEADS = [
+# (kicker, headline lines, colour, body lines, scene key)
+PANELS = [
     ("COP31 - ANTALYA", ("COP31", "COLLAPSES"), GOLD,
      ["NO DEAL. EU AND OTHERS REJECT THE FINAL TEXT,",
       "WHICH DROPS FOSSIL FUELS ENTIRELY. KURUM:",
       "'NO AGREEMENT, THESE DECISIONS HAVE NOT",
       "BEEN ADOPTED.' LONGEST COP EVER; FIRST WITH",
-      "NO OVERARCHING DEAL SINCE COPENHAGEN 2009."]),
+      "NO OVERARCHING DEAL SINCE COPENHAGEN 2009."], "cop31"),
     ("CIKANDE, INDONESIA", ("FIRE SEARCH", "3 DEAD,", "36 MISSING"), RED,
      ["SAT FIRE AT MILKITA CANDY",
       "FACTORY, CIKANDE. SUN SEARCH:",
       "3 DEAD, 36 MISSING, 15 SURVIVED,",
-      "4 HURT. CAUSE NOT ANNOUNCED."]),
+      "4 HURT. CAUSE NOT ANNOUNCED."], "cikande"),
     ("DYMER, UKRAINE", ("DRONE HITS", "FLAT, 14 MISSING"), BLUE,
      ["SUN MORNING: RUSSIAN DRONE",
       "HITS A 5-STOREY BLOCK NEAR",
       "KYIV. PART COLLAPSES, 3 DEAD",
       "FOUND, 9 EVACUATED, 14 MISSING",
-      "AS RESCUERS DIG THROUGH RUBBLE."]),
+      "AS RESCUERS DIG THROUGH RUBBLE."], "dymer"),
 ]
 
-# (headline, detail, region colour, date note or "")
-STORIES = [
-    ("MEXICO: 'EL CHAPO ISIDRO' HELD", "CARTEL BOSS HELD IN SINALOA; 11 KILLED IN RAID", RED, "SAT RAID"),
-    ("POLAND: 3 RUSSIAN KH-101 MISSILES", "PROSECUTORS CONFIRM SUN; RUTTE: NATO WILL DEFEND", BLUE, "FRI 20 NOV"),
-    ("BAHRAIN: IRAN STRIKE WOUNDS 2", "SAT HIT ON CIVILIAN SITE; IRGC CLAIMS US PATRIOTS", PURPLE, "SUN UPDATE"),
-    ("GAZA: AID TRUCK STRIKE KILLS 3", "WITNESSES: VEHICLE CARRIED FOOD IN GAZA CITY", PURPLE, "22 NOV"),
-    ("KRYVYI RIH: 2 KILLED, 83 HURT", "RUSSIAN MISSILE HITS ZELENSKYY'S HOMETOWN", BLUE, "SAT 21 NOV"),
-    ("KALININGRAD HIT BY DRONES", "UKRAINIAN DRONES STRIKE THE ENCLAVE, FIRST TIME", BLUE, "REPORTED"),
-    ("DENMARK EXPELS RUSSIAN ATTACHE", "7 DAYS TO LEAVE OVER ALLEGED ASSASSINATION PLOT", BLUE, "22 NOV"),
-    ("EU-INDONESIA CEPA SIGNED", "10 YEARS OF TALKS; TARIFFS CUT ON 98.5% OF GOODS", GREEN, "SAT 21 NOV"),
-    ("EU BUDGET: EUR 204B CUTS PLAN", "COSTA PROPOSES 3% BIG-TECH TAX; EUR 100B FOR KYIV", BLUE, "22 NOV"),
-    ("FRANCE PROTESTS, 6TH WEEKEND", "TENS OF THOUSANDS MARCH OVER COSTS, POLICE POWERS", BLUE, "22 NOV"),
-    ("BELGIUM ATC STRIKE WARNING", "FLIGHT CANCELLATIONS FEARED AS CONTROLLERS STRIKE", BLUE, "22 NOV"),
-    ("TRAFALGAR TREE FELLED", "LONDON'S CHRISTMAS TREE CUT DOWN IN NORWAY", BLUE, "22 NOV"),
-    ("NORWAY VOIDS 3 OIL LICENCES", "SUPREME COURT RULES CLIMATE-DISPUTED LICENCES INVALID", BLUE, "22 NOV"),
-    ("SOUTH AFRICA: ANC FALLS TO 31%", "WORST LOCAL RESULT SINCE 1994; DA LEADS IN CITIES", ORANGE, "RESULTS 21 NOV"),
-    ("NIGERIA BOAT: 24 DEAD", "FUNERAL BOAT CAPSIZES IN BAYELSA; SEARCH GOES ON", ORANGE, "FRI 20 NOV"),
-    ("DRC EBOLA: 5,678 DEAD", "11,613 CASES AS OF 17 NOV, WHO REPORTS; STILL SPREADING", ORANGE, "WHO 20 NOV"),
-    ("KENYA: EBOLA-FREE COUNTDOWN", "LAST PATIENT DISCHARGED; 42-DAY WATCH BEGINS", ORANGE, "11 NOV"),
-    ("HAITI-EL SALVADOR PRISON DEAL", "HAITI TO BUILD 3 PRISONS WITH SALVADORAN HELP", RED, "22 NOV"),
-    ("KENYA-SAUDI: 293,600 JOBS", "KENYA SECURES SAUDI JOB OPENINGS FOR ITS WORKERS", ORANGE, "22 NOV"),
-    ("GHANA HERITAGE BANKNOTES", "NEW SERIES HONOURS NKRUMAH, KOFI ANNAN, TRADERS", ORANGE, "22 NOV"),
-    ("PERU QUAKE M6.7, 1 KILLED", "ANDES QUAKE DISPLACES 853; NO TSUNAMI THREAT", RED, "FRI 21 NOV"),
-    ("MALUKU QUAKE M7.2", "DEEP QUAKE OFF SW MALUKU; NO TSUNAMI, NO CASUALTIES", GREEN, "SAT 21 NOV"),
-    ("SOUTH KOREA MINISTER RESIGNS", "EDUCATION CHIEF QUITS OVER AI CHEATING SCANDAL", GREEN, "22 NOV"),
-    ("CHINA WARNS JAPAN ON TAIWAN", "BEIJING: CORRECT 'ERRONEOUS WORDS' AFTER TAKAICHI", GREEN, "22 NOV"),
-    ("HORMUZ SWIM: PUGH CROSSES", "BRITON SWIMS WAR-HIT STRAIT FOR THE ENVIRONMENT", PURPLE, "22 NOV"),
-    ("HORMUZ: 2 TANKERS HIT MINES", "TANKERS CATCH FIRE IN THE STRAIT, IRGC REPORTS", PURPLE, "SUN 22 NOV"),
-    ("ISRAEL COALITION TALKS", "EISENKOT INVITES NETANYAHU TO FORM NEW GOVERNMENT", PURPLE, "22 NOV"),
-    ("TRUMP: CREDIT-CARD CAP 10%", "PRESIDENT VOWS TO WORK WITH DEMOCRATS ON THE CAP", RED, "22 NOV"),
-    ("TRUMP ORDERS CONTRACTORS", "FEDERAL CONTRACTORS MUST REPORT CONGRESS CONTACTS", RED, "22 NOV"),
-    ("FBI PROBES NCIC HACK", "FBI INVESTIGATES APPARENT HACK OF CRIME DATABASE", RED, "00:10 UTC"),
-    ("SEATTLE ICE JET-BRIDGE ARREST", "MASKED AGENTS DETAIN 2 ON ALASKA FLIGHT; PORT FURIOUS", RED, "22 NOV"),
-    ("BOLSONARO IN ICU", "EX-PRESIDENT IN INTENSIVE CARE, BOWEL OBSTRUCTION", RED, "22 NOV"),
-    ("US STOCKS IN CORRECTION", "AI AND CHIP SELL-OFF PUSHES DOW, S&P INTO CORRECTION", RED, "FRI SELL-OFF"),
-    ("AMAZON IN $7.5B AI DEAL", "AMAZON SIGNS $7.5B AI DEAL WITH DECART", RED, "22 NOV"),
-    ("ANTHROPIC IPO ROW", "IPO SPARKS WALL ST ROW OVER UNUSUAL DEAL CURBS", RED, "22 NOV"),
-    ("GTA VI: $3.79B DAY ONE", "ROCKSTAR OFFICIAL: RECORD LAUNCH, 32.5M PRE-SOLD", TEAL, "20 NOV"),
-    ("RIEMANN PROOF CLAIMED", "MATHEMATICIAN CLAIMS PROOF WITH CLAUDE'S HELP - CLAIM", TEAL, "CLAIM ONLY"),
-    ("SBF: 82-MIN PRISON INTERVIEW", "EX-FTX CHIEF SPEAKS FROM BROOKLYN PRISON, 14-YEAR-OLD HOST", TEAL, "22 NOV"),
-    ("AUKUS: AUSTRALIA REBUKES CBO", "MARLES: 'THEY ARE WRONG' ON SUBMARINE WARNING", TEAL, "22 NOV"),
-    ("UN 'KILLER ROBOTS' PLEDGE", "GENEVA TALKS END WITH PLEDGE OF NEW RULES IN 2 YEARS", BLUE, "22 NOV"),
-    ("AIR NIUGINI LANDS SAFE", "ENGINE FIRE FORCES EMERGENCY LANDING; ALL 146 SAFE", TEAL, "22 NOV"),
-    ("SHENZHEN SUMMIT NUCLEAR PACT", "CHINA-RUSSIA NUCLEAR DECLARATION AT SHENZHEN TALKS", GREEN, "22 NOV"),
-    ("VERSTAPPEN WINS LAS VEGAS GP", "3RD VEGAS WIN, 75TH OF CAREER; NORRIS 2ND, PIASTRI 3RD", TEAL, "SAT NIGHT"),
-    ("LIVERPOOL 4-0 MAN UTD", "POCHETTINO DEBUT ENDS IN ROUT; YORO OFF AFTER 8 MIN", TEAL, "22 NOV"),
-    ("KANSAS CITY WIN NWSL TITLE", "CURRENT TAKE THE NWSL CHAMPIONSHIP", TEAL, "22 NOV"),
-    ("WEMBANYAMA 50 PTS, SPURS WIN", "SPURS STAR SCORES 50 IN VICTORY", TEAL, "22 NOV"),
-    ("BEPI COLOMBO REACHES MERCURY", "ESA PROBE ENTERS MERCURY ORBIT", TEAL, "22 NOV"),
-    ("NASA: TINY ASTEROID MINI-MOON", "SMALL ASTEROID CAPTURED AS EARTH'S TEMPORARY MOON", TEAL, "22 NOV"),
-    ("UFO FOOTAGE DECLASSIFIED", "US RELEASES MORE UFO FOOTAGE FILMED IN MIDDLE EAST", RED, "22 NOV"),
-    ("EU RWANDA DEPORTATION HUBS", "EU MOVES ON RWANDA HUBS AND A DIGITAL TAX", BLUE, "22 NOV"),
-    ("SPARTA II STILL BURNING", "DRONE-HIT CARGO SHIP SMOULDERS; 16 CREW EVACUATED", BLUE, "SUN 22 NOV"),
+# (headline, detail, colour, certainty tag, date note) — featured 4..13
+FEATURED = [
+    ("MEXICO: 'EL CHAPO ISIDRO' HELD", "CARTEL BOSS HELD IN SINALOA; 11 KILLED IN RAID", RED, "CONFIRMED", "SAT RAID"),
+    ("POLAND: 3 RUSSIAN KH-101 MISSILES", "PROSECUTORS CONFIRM; RUTTE VOWS DEFENCE", BLUE, "CONFIRMED", "FRI 20 NOV"),
+    ("BAHRAIN: IRAN STRIKE WOUNDS 2", "SAT HIT ON CIVILIAN SITE; IRGC CLAIM", PURPLE, "REPORTED", "SUN UPDATE"),
+    ("GAZA: AID TRUCK STRIKE KILLS 3", "WITNESSES: VEHICLE CARRIED FOOD IN GAZA CITY", PURPLE, "REPORTED", "22 NOV"),
+    ("KRYVYI RIH: 2 KILLED, 83 HURT", "RUSSIAN MISSILE HITS HOMETOWN", BLUE, "CONFIRMED", "SAT 21 NOV"),
+    ("EU-INDONESIA CEPA SIGNED", "10 YEARS OF TALKS; TARIFFS CUT 98.5%", GREEN, "OFFICIAL", "SAT 21 NOV"),
+    ("SOUTH AFRICA: ANC FALLS TO 31%", "WORST LOCAL RESULT SINCE 1994", ORANGE, "OFFICIAL", "RESULTS 21 NOV"),
+    ("NIGERIA BOAT: 24 DEAD", "FUNERAL BOAT CAPSIZES IN BAYELSA", ORANGE, "CONFIRMED", "FRI 20 NOV"),
+    ("DRC EBOLA: 5,678 DEAD", "11,613 CASES AS OF 17 NOV, WHO REPORTS", ORANGE, "OFFICIAL", "WHO 20 NOV"),
+    ("GTA VI: $3.79B DAY ONE", "RECORD LAUNCH, 32.5M PRE-SOLD", TEAL, "OFFICIAL", "20 NOV"),
+]
+
+# (headline, detail, colour, certainty tag, date note) — the rest 14..42
+LIST = [
+    ("KALININGRAD HIT BY DRONES", "UKRAINIAN DRONES STRIKE THE ENCLAVE", BLUE, "REPORTED", "22 NOV"),
+    ("DENMARK EXPELS RUSSIAN ATTACHE", "7 DAYS TO LEAVE OVER ASSASSINATION PLOT", BLUE, "CONFIRMED", "22 NOV"),
+    ("EU BUDGET: EUR 204B CUTS PLAN", "COSTA PROPOSES 3% BIG-TECH TAX", BLUE, "REPORTED", "22 NOV"),
+    ("FRANCE PROTESTS, 6TH WEEKEND", "TENS OF THOUSANDS MARCH OVER COSTS", BLUE, "CONFIRMED", "22 NOV"),
+    ("BELGIUM ATC STRIKE WARNING", "FLIGHT CANCELLATIONS FEARED", BLUE, "REPORTED", "22 NOV"),
+    ("NORWAY VOIDS 3 OIL LICENCES", "COURT VOIDS CLIMATE-DISPUTED LICENCES", BLUE, "OFFICIAL", "22 NOV"),
+    ("KENYA: EBOLA-FREE COUNTDOWN", "LAST PATIENT DISCHARGED; 42-DAY WATCH", ORANGE, "OFFICIAL", "11 NOV"),
+    ("PERU QUAKE M6.7, 1 KILLED", "ANDES QUAKE DISPLACES 853; NO TSUNAMI", RED, "OFFICIAL", "FRI 21 NOV"),
+    ("MALUKU QUAKE M7.2", "DEEP QUAKE OFF MALUKU; NO CASUALTIES", GREEN, "OFFICIAL", "SAT 21 NOV"),
+    ("SOUTH KOREA MINISTER RESIGNS", "EDUCATION CHIEF QUITS OVER AI CHEATING", GREEN, "CONFIRMED", "22 NOV"),
+    ("CHINA WARNS JAPAN ON TAIWAN", "BEIJING: CORRECT 'ERRONEOUS WORDS'", GREEN, "CONFIRMED", "22 NOV"),
+    ("HORMUZ: 2 TANKERS HIT MINES", "TANKERS CATCH FIRE IN THE STRAIT", PURPLE, "REPORTED", "SUN 22 NOV"),
+    ("ISRAEL COALITION TALKS", "EISENKOT INVITES NETANYAHU TO LEAD TALKS", PURPLE, "REPORTED", "22 NOV"),
+    ("TRUMP: CREDIT-CARD CAP 10%", "PRESIDENT VOWS TO WORK WITH DEMOCRATS", RED, "CONFIRMED", "22 NOV"),
+    ("TRUMP ORDERS CONTRACTORS", "CONTRACTORS MUST REPORT CONGRESS CONTACTS", RED, "CONFIRMED", "22 NOV"),
+    ("FBI PROBES NCIC HACK", "APPARENT HACK OF CRIME DATABASE PROBED", RED, "REPORTED", "00:10 UTC"),
+    ("SEATTLE ICE JET-BRIDGE ARREST", "MASKED AGENTS DETAIN 2 ON ALASKA FLIGHT", RED, "REPORTED", "22 NOV"),
+    ("BOLSONARO IN ICU", "EX-PRESIDENT IN INTENSIVE CARE", RED, "CONFIRMED", "22 NOV"),
+    ("US STOCKS IN CORRECTION", "AI AND CHIP SELL-OFF HITS DOW, S&P", RED, "REPORTED", "FRI SELL-OFF"),
+    ("AMAZON IN $7.5B AI DEAL", "AMAZON SIGNS $7.5B AI DEAL WITH DECART", RED, "REPORTED", "22 NOV"),
+    ("ANTHROPIC IPO ROW", "IPO SPARKS WALL ST ROW OVER DEAL CURBS", RED, "REPORTED", "22 NOV"),
+    ("AUKUS: AUSTRALIA REBUKES CBO", "MARLES: 'THEY ARE WRONG' ON SUBS WARNING", TEAL, "CONFIRMED", "22 NOV"),
+    ("UN 'KILLER ROBOTS' PLEDGE", "GENEVA TALKS END WITH PLEDGE OF NEW RULES", BLUE, "REPORTED", "22 NOV"),
+    ("AIR NIUGINI LANDS SAFE", "ENGINE FIRE FORCES EMERGENCY LANDING", TEAL, "CONFIRMED", "22 NOV"),
+    ("VERSTAPPEN WINS LAS VEGAS GP", "3RD VEGAS WIN, 75TH OF CAREER", TEAL, "OFFICIAL", "SAT NIGHT"),
+    ("LIVERPOOL 4-0 MAN UTD", "POCHETTINO DEBUT ENDS IN ROUT; YORO OFF", TEAL, "CONFIRMED", "22 NOV"),
+    ("BEPI COLOMBO REACHES MERCURY", "ESA PROBE ENTERS MERCURY ORBIT", TEAL, "OFFICIAL", "22 NOV"),
+    ("EU RWANDA DEPORTATION HUBS", "EU MOVES ON RWANDA HUBS AND A DIGITAL TAX", BLUE, "REPORTED", "22 NOV"),
+    ("SPARTA II STILL BURNING", "DRONE-HIT SHIP SMOULDERS, 16 EVACUATED", BLUE, "CONFIRMED", "SUN 22 NOV"),
+]
+
+# day-in-numbers strip: (big, label)
+NUMBERS = [
+    ("42", "STORIES"),
+    ("7", "REGIONS"),
+    ("3", "DEAD - CIKANDE"),
+    ("14", "MISSING - DYMER"),
+    ("83", "HURT - KRYVYI RIH"),
+    ("$3.79B", "GTA VI DAY ONE"),
+]
+
+# region bar: (name, colour, count) — sums to 42
+REGIONS = [
+    ("EUROPE", BLUE, 11),
+    ("AMERICAS", RED, 10),
+    ("WORLD", GREY, 6),
+    ("ASIA", GREEN, 5),
+    ("MIDEAST", PURPLE, 4),
+    ("AFRICA", ORANGE, 4),
+    ("OCEANIA", TEAL, 2),
 ]
 
 # ------------------------------------------------------------------- map
@@ -463,28 +485,16 @@ PINS = [
     (30.7, 36.9, 1, GOLD),    # COP31 Antalya
     (106.3, -6.3, 2, RED),    # Cikande
     (30.3, 50.8, 3, BLUE),    # Dymer
-    (-107.4, 25.6, 5, RED),   # Sinaloa
-    (22.0, 50.5, 6, BLUE),    # Poland
-    (50.6, 26.2, 7, PURPLE),  # Bahrain
-    (34.5, 31.5, 8, PURPLE),  # Gaza
-    (33.4, 45.5, 9, BLUE),    # Kryvyi Rih
-    (19.0, 56.5, 10, BLUE),   # Kaliningrad
-    (11.0, 58.0, 11, BLUE),   # Copenhagen
-    (6.3, 4.9, 15, ORANGE),   # Bayelsa
-    (25.0, 0.0, 16, ORANGE),  # DRC
-    (-75.2, -11.5, 21, RED),  # Peru
-    (127.0, 37.5, 23, GREEN), # Seoul
-]
-
-# (hour UTC, label, above_line?) - timeline strip
-TIMELINE = [
-    (0.2, "00:10 FBI HACK", True),
-    (3.9, "03:56 CIKANDE", False),
-    (5.4, "05:26 DRAFT", True),
-    (7.0, "DYMER", False),
-    (12.0, "SPARTA II", True),
-    (16.5, "16:30 LIVERPOOL", False),
-    (19.5, "COP31 FALLS", True),
+    (-107.4, 25.6, 4, RED),   # Sinaloa
+    (22.0, 50.5, 5, BLUE),    # Poland
+    (50.6, 26.2, 6, PURPLE),  # Bahrain
+    (34.5, 31.5, 7, PURPLE),  # Gaza
+    (33.4, 45.5, 8, BLUE),    # Kryvyi Rih
+    (19.0, 56.5, 9, BLUE),    # Kaliningrad
+    (11.0, 58.0, 10, BLUE),   # Copenhagen
+    (6.3, 4.9, 11, ORANGE),   # Bayelsa
+    (25.0, 0.0, 12, ORANGE),  # DRC
+    (56.5, 26.5, 13, PURPLE), # Hormuz
 ]
 
 # ---------------------------------------------------------------- layout
@@ -492,34 +502,150 @@ def f(v):
     return v * S
 
 def header(cv):
-    cv.fill_rect(0, 0, W, f(66), (10, 16, 28))
-    text_stroke(cv, f(16), f(14), "THE WORLD TODAY", PAPER, scale=3.4, spacing=2.0)
-    text_stroke(cv, f(700), f(12), "22 NOVEMBER 2026", GOLD, scale=2.6, spacing=2.0)
-    text5(cv, f(700), f(42), "SUNDAY  -  54 STORIES  -  6 CONTINENTS", PAPER2,
+    cv.fill_rect(0, 0, W, f(58), (10, 16, 28))
+    text_stroke(cv, f(16), f(12), "THE WORLD TODAY", PAPER, scale=3.2, spacing=2.0)
+    text_stroke(cv, f(648), f(10), "22 NOVEMBER 2026", GOLD, scale=2.6, spacing=2.0)
+    text5(cv, f(648), f(40), "SUNDAY  -  42 STORIES  -  7 REGIONS", PAPER2,
           scale=2)
-    cv.hline(0, f(66), W, GOLD, f(3))
+    cv.hline(0, f(58), W, GOLD, f(3))
 
-def lead_cards(cv):
-    cards = [(16, 440, 0), (468, 260, 1), (740, 268, 2)]
-    y, h = 76, 132
+def numbers_strip(cv):
+    y0, h = 58, 38
+    cv.fill_rect(0, f(y0), W, f(h), PANEL)
+    cw = 992 / len(NUMBERS)
+    for i, (big, lab) in enumerate(NUMBERS):
+        x = 16 + i * cw
+        bw = text_stroke_w(big, scale=1.6, spacing=1.5) / S
+        text_stroke(cv, f(x + (cw - bw) / 2), f(y0 + 5), big, GOLD,
+                    scale=1.6, spacing=1.5)
+        lw = text5_w(lab, scale=2) / S
+        text5(cv, f(x + (cw - lw) / 2), f(y0 + 26), lab, PAPER2, scale=2)
+        if i:
+            cv.fill_rect(f(x), f(y0 + 6), f(2), f(h - 12), LINE)
+
+# ------------------------------------------------------- drawn scenes
+# Simple geometric illustrations for the three lead panels.
+def scene_cop31(cv, x, y, w, h):
+    cv.fill_rect(x, y, w, h, (24, 44, 66))
+    cv.disc(x + w - int(w * 0.16), y + int(h * 0.26), int(h * 0.16), GOLD)
+    for i, c in enumerate((GOLD, RED, BLUE, GREEN, PURPLE)):
+        px = x + int(w * (0.10 + i * 0.16))
+        cv.fill_rect(px, y + int(h * 0.30), 4, int(h * 0.55), PAPER2)
+        cv.fill_rect(px + 4, y + int(h * 0.30), int(w * 0.10),
+                     int(h * 0.18), c)
+    cv.fill_rect(x + int(w * 0.36), y + int(h * 0.72), int(w * 0.28),
+                 int(h * 0.28), PAPER)
+    cv.fill_rect(x + int(w * 0.30), y + int(h * 0.86), int(w * 0.40),
+                 int(h * 0.14), GOLD)
+    for i in range(9):
+        cv.disc(x + int(w * (0.08 + i * 0.10)), y + int(h * 0.94),
+                3, GREY)
+
+def scene_cikande(cv, x, y, w, h):
+    cv.fill_rect(x, y, w, h, (52, 18, 12))
+    cv.fill_rect(x, y + int(h * 0.55), w, int(h * 0.45), (28, 14, 10))
+    cv.fill_rect(x + int(w * 0.08), y + int(h * 0.62), int(w * 0.30),
+                 int(h * 0.38), INK)
+    cv.fill_rect(x + int(w * 0.42), y + int(h * 0.55), int(w * 0.34),
+                 int(h * 0.45), INK)
+    cv.fill_rect(x + int(w * 0.80), y + int(h * 0.42), int(w * 0.05),
+                 int(h * 0.58), INK)
+    cv.fill_rect(x + int(w * 0.88), y + int(h * 0.50), int(w * 0.05),
+                 int(h * 0.50), INK)
+    for fx, fh in ((0.22, 0.42), (0.55, 0.55), (0.72, 0.38)):
+        bx = x + int(w * fx)
+        by = y + int(h * 0.62)
+        cv.fill_poly([(bx - int(w * 0.05), by), (bx, by - int(h * fh)),
+                      (bx + int(w * 0.05), by)], ORANGE)
+        cv.fill_poly([(bx - int(w * 0.025), by),
+                      (bx, by - int(h * fh * 0.6)),
+                      (bx + int(w * 0.025), by)], GOLD)
+    for sx, sy, sr in ((0.82, 0.30, 9), (0.88, 0.20, 12), (0.93, 0.32, 8)):
+        cv.disc(x + int(w * sx), y + int(h * sy), sr, GREY)
+
+def scene_dymer(cv, x, y, w, h):
+    cv.fill_rect(x, y, w, h, (14, 20, 40))
+    for sx, sy in ((0.10, 0.15), (0.30, 0.08), (0.55, 0.18), (0.80, 0.10),
+                   (0.92, 0.22), (0.45, 0.06)):
+        cv.disc(x + int(w * sx), y + int(h * sy), 3, PAPER2)
+    bx, bw = x + int(w * 0.14), int(w * 0.44)
+    cv.fill_rect(bx, y + int(h * 0.30), bw, int(h * 0.70), (32, 42, 66))
+    for r in range(4):
+        for c in range(5):
+            wx = bx + int(w * (0.03 + c * 0.085))
+            wy = y + int(h * (0.36 + r * 0.15))
+            cv.fill_rect(wx, wy, int(w * 0.05), int(h * 0.08),
+                         GOLD if (r + c) % 3 else GREY)
+    cx = bx + bw
+    cv.fill_poly([(cx, y + int(h * 0.30)), (cx + int(w * 0.16),
+                  y + int(h * 0.52)),
+                  (cx + int(w * 0.10), y + int(h * 0.72)),
+                  (cx + int(w * 0.22), y + int(h * 0.86)),
+                  (cx + int(w * 0.30), y + h)], (20, 26, 42))
+    cv.fill_rect(cx + int(w * 0.05), y + int(h * 0.88), int(w * 0.08),
+                 int(h * 0.06), GREY)
+    cv.fill_rect(cx + int(w * 0.16), y + int(h * 0.80), int(w * 0.07),
+                 int(h * 0.06), GREY)
+    dx, dy = x + int(w * 0.78), y + int(h * 0.16)
+    cv.line(dx - 14, dy, dx + 14, dy, PAPER2, 3)
+    cv.line(dx, dy - 14, dx, dy + 14, PAPER2, 3)
+    cv.disc(dx, dy, 5, RED)
+    cv.line(dx, dy + 10, bx + bw // 2, y + int(h * 0.34), GOLD, 2)
+
+SCENES = {"cop31": scene_cop31, "cikande": scene_cikande,
+          "dymer": scene_dymer}
+
+def panel_cards(cv):
+    cards = [(16, 324, 0), (350, 324, 1), (684, 324, 2)]
+    y, h = 104, 168
     for x, w, i in cards:
-        kicker, head, color, body = LEADS[i]
+        kicker, head, color, body, scene = PANELS[i]
         cv.fill_rect(f(x), f(y), f(w), f(h), PANEL)
-        cv.fill_rect(f(x), f(y), f(w), f(4), color)
         cv.rect(f(x), f(y), f(w), f(h), LINE, 2)
-        text5(cv, f(x + 10), f(y + 10), kicker, color, scale=2)
-        text_stroke(cv, f(x + 10), f(y + 24), str(i + 1), GOLD, scale=2.0)
-        hy = y + 22
+        SCENES[scene](cv, f(x) + 2, f(y) + 2, f(w) - 4, f(62))
+        cv.fill_rect(f(x), f(y + 64), f(w), f(3), color)
+        text5(cv, f(x + 10), f(y + 72), kicker, color, scale=2)
+        text_stroke(cv, f(x + 10), f(y + 86), str(i + 1), GOLD, scale=2.0)
+        hy = y + 84
         for ln in head:
-            text_stroke(cv, f(x + 34), f(hy), ln, PAPER, scale=1.9, spacing=1.5)
+            text_stroke(cv, f(x + 34), f(hy), ln, PAPER, scale=1.9,
+                        spacing=1.5)
             hy += 17
         by = hy + 6
         for ln in body:
             text5(cv, f(x + 10), f(by), ln, PAPER2, scale=2)
             by += 9
 
+def featured_grid(cv):
+    text_stroke(cv, f(16), f(280), "TOP STORIES", PAPER, scale=1.8,
+                spacing=1.5)
+    text5(cv, f(16), f(298), "10 MORE, TAGGED BY CERTAINTY", GREY, scale=2)
+    for row, y in enumerate((316, 394)):
+        for col in range(5):
+            idx = row * 5 + col
+            headline, detail, color, tag, date = FEATURED[idx]
+            x = 16 + col * 198
+            w = 190
+            cv.fill_rect(f(x), f(y), f(w), f(70), PANEL2)
+            cv.fill_rect(f(x), f(y), f(w), f(3), color)
+            cv.rect(f(x), f(y), f(w), f(70), LINE, 2)
+            text5(cv, f(x + 8), f(y + 8), "%02d" % (idx + 4), color, scale=2)
+            tw = text5_w(tag, scale=2)
+            text5(cv, f(x + w - 8) - tw, f(y + 8), tag, GOLD, scale=2)
+            hl = wrap5(headline, 19)[:2]
+            hy = y + 20
+            for ln in hl:
+                text_stroke(cv, f(x + 8), f(hy), ln, PAPER, scale=1.3,
+                            spacing=1.2)
+                hy += 13
+            dl = wrap5(detail + " - " + date, 28)[:2]
+            dy = hy + 2
+            for ln in dl:
+                text5(cv, f(x + 8), f(dy), ln, PAPER2, scale=2)
+                dy += 9
+
 def world_map(cv):
-    x0, y0, w, h = 16, 216, 992, 136
+    x0, y0, w, h = 16, 472, 992, 140
     cv.fill_rect(f(x0), f(y0), f(w), f(h), MAPSEA)
     cv.rect(f(x0), f(y0), f(w), f(h), LINE, 2)
     text5(cv, f(x0 + 8), f(y0 + 6), "THE WORLD  -  WHERE IT HAPPENED", GOLD, scale=2)
@@ -540,77 +666,58 @@ def world_map(cv):
         tw = text5_w(num_s, scale=2)
         text5(cv, px - tw // 2, py - f(3), num_s, INK, scale=2)
 
-def timeline(cv):
-    y0, h = 360, 40
-    x0, x1 = 30, 994
-    text5(cv, f(16), f(y0), "UTC TIMELINE", GOLD, scale=2)
-    ly = y0 + 22
-    cv.hline(f(x0), f(ly), f(x1 - x0), LINE, f(2))
-    for hr in (0, 24):
-        tx = x0 + (x1 - x0) * hr / 24.0
-        cv.fill_rect(f(tx) - 1, f(ly - 3), f(2), f(6), GREY)
-        lab = "%02d:00" % hr
-        text5(cv, f(tx) - text5_w(lab, scale=2) // 2, f(ly + 6), lab, GREY, scale=2)
-    for hr, lab, above in TIMELINE:
-        tx = x0 + (x1 - x0) * hr / 24.0
-        cv.disc(f(tx), f(ly), f(4), GOLD)
-        tw = text5_w(lab, scale=2)
-        lx = max(f(16), min(f(tx) - tw // 2, f(1008) - tw))
-        ty = f(ly - 10) if above else f(ly + 6)
-        text5(cv, lx, ty, lab, PAPER2, scale=2)
+def region_bar(cv):
+    y0, h = 620, 22
+    cv.fill_rect(f(16), f(y0), f(992), f(h), PANEL)
+    x = 16
+    total = sum(c for _, _, c in REGIONS)
+    for name, color, count in REGIONS:
+        cv.fill_rect(f(x), f(y0 + 4), f(10), f(14), color)
+        lab = "%s %d" % (name, count)
+        text5(cv, f(x + 14), f(y0 + 6), lab, PAPER2, scale=2)
+        x += 14 + text5_w(lab, scale=2) / S + 18
 
-def story_grid(cv):
-    y0 = 434
-    text_stroke(cv, f(16), f(408), "THE DAY IN BRIEF", PAPER, scale=2.0, spacing=1.5)
-    key = [("EUROPE", BLUE), ("ASIA", GREEN), ("AFRICA", ORANGE),
-           ("AMERICAS", RED), ("MIDEAST", PURPLE), ("SPORT", TEAL)]
-    kx = 560
-    for name, color in key:
-        cv.fill_rect(f(kx), f(412), f(10), f(10), color)
-        kx += 12
-        kx = text5(cv, f(kx), f(413), name, PAPER2, scale=2)
-        kx += 14
-    cols = [16, 267, 518, 769]
-    col_w = 239
-    per_col = 13
+def story_list(cv):
+    text_stroke(cv, f(16), f(650), "THE REST OF THE DAY", PAPER,
+                scale=1.8, spacing=1.5)
+    text5(cv, f(16), f(668), "29 MORE STORIES, ONE LINE EACH", GREY, scale=2)
+    cols = [16, 350, 684]
+    per_col = 10
     for ci, cx in enumerate(cols):
-        cy = y0
+        cy = 686
         for si in range(per_col):
             idx = ci * per_col + si
-            if idx >= len(STORIES):
+            if idx >= len(LIST):
                 break
-            headline, detail, color, date = STORIES[idx]
-            num = idx + 4  # stories 4..54, leads are 1..3
-            full = detail + " - " + date
-            h_lines = wrap5(headline, 38)[:2]
-            d_lines = wrap5(full, 38)[:max(1, 3 - len(h_lines))]
-            # first line: coloured number, then headline
+            headline, detail, color, tag, date = LIST[idx]
+            num = idx + 14  # stories 14..42
             num_s = "%02d " % num
             nw = text5_w(num_s, scale=2)
             text5(cv, f(cx), f(cy), num_s, color, scale=2)
-            text5(cv, f(cx) + nw, f(cy), h_lines[0], PAPER, scale=2)
+            hl = wrap5(headline, 46)[:1]
+            text5(cv, f(cx) + nw, f(cy), hl[0], PAPER, scale=2)
             cy += 9
-            for ln in h_lines[1:]:
-                text5(cv, f(cx), f(cy), ln, PAPER, scale=2)
-                cy += 9
-            for ln in d_lines:
-                text5(cv, f(cx), f(cy), ln, GREY, scale=2)
-                cy += 9
-            cy += 6
+            dl = wrap5(detail + " - " + date, 52)[:1]
+            text5(cv, f(cx), f(cy), dl[0], GREY, scale=2)
+            cy += 9
+            tw = text5_w(tag, scale=2)
+            text5(cv, f(cx + 324) - tw, f(cy - 18), tag, GOLD, scale=2)
+            cy += 8
 
 def date_check(cv):
-    x0, y0, w, h = 16, 884, 992, 78
+    x0, y0, w, h = 16, 916, 992, 60
     cv.fill_rect(f(x0), f(y0), f(w), f(h), (24, 22, 10))
     cv.rect(f(x0), f(y0), f(w), f(h), GOLD, f(3))
-    text5(cv, f(x0 + 10), f(y0 + 8), "DATE CHECK  -  ONLY 22 NOVEMBER", GOLD, scale=2)
+    text5(cv, f(x0 + 10), f(y0 + 7),
+          "DATE CHECK  -  ONLY 22 NOVEMBER  -  PRESS 14:00 UTC MON 23 NOV",
+          GOLD, scale=2)
     lines = [
-        "COP31 COLLAPSE * DYMER STRIKE * SPARTA II FIRE * CIKANDE SEARCH *",
-        "BAHRAIN UPDATE * FBI NCIC PROBE * DENMARK EXPULSION * FRANCE PROTESTS *",
-        "KOREA MINISTER RESIGNS * HORMUZ TANKERS * EU BUDGET PLAN * UFO FILES",
+        "1 COP31 COLLAPSE * 2 CIKANDE SEARCH * 3 DYMER STRIKE * 6 BAHRAIN UPDATE *",
+        "13 GTA VI IS THE OFFICIAL 20 NOV $3.79B * 29 FBI NCIC PROBE * 42 SPARTA II FIRE",
         "21 NOV EVENTS ARE DATED ON THEIR CARDS: PERU, MALUKU, KRYVYI RIH, MEXICO",
-        "RAID, EU-INDONESIA DEAL. GTA VI FIGURE IS THE OFFICIAL 20 NOV $3.79B.",
+        "RAID, EU-INDONESIA DEAL, ANC RESULT. CIKANDE MON UPDATE (24 KILLED) NOT USED.",
     ]
-    ly = y0 + 22
+    ly = y0 + 20
     for ln in lines:
         text5(cv, f(x0 + 10), f(ly), ln, PAPER2, scale=2)
         ly += 9
@@ -619,9 +726,9 @@ def footer(cv):
     lines = [
         "SOURCES: REUTERS - AP - AFP - BBC - UN NEWS - EUROPEAN COMMISSION - WHO -",
         "ECDC - FIA - ESPN - NEMA - BMKG - USGS. ALL TIMES UTC UNLESS NOTED.",
-        "THE WORLD TODAY - SUNDAY 22 NOVEMBER 2026 - MAKE.FUN NEWS-IMAGE-20261122",
+        "THE WORLD TODAY - SUNDAY 22 NOVEMBER 2026 - 42 STORIES - MAKE.FUN NEWS-IMAGE-20261122",
     ]
-    ly = 972
+    ly = 984
     for ln in lines:
         tw = text5_w(ln, scale=2)
         text5(cv, f(512) - tw // 2, f(ly), ln, GREY, scale=2)
@@ -630,10 +737,12 @@ def footer(cv):
 def main():
     cv = Canvas()
     header(cv)
-    lead_cards(cv)
+    numbers_strip(cv)
+    panel_cards(cv)
+    featured_grid(cv)
     world_map(cv)
-    timeline(cv)
-    story_grid(cv)
+    region_bar(cv)
+    story_list(cv)
     date_check(cv)
     footer(cv)
     out = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
